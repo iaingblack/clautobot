@@ -44,7 +44,19 @@ export async function createIssue(projectKey, summary, description) {
 }
 
 export async function getIssue(issueKey) {
-  return jiraFetch(`/issue/${issueKey}?fields=status,summary`);
+  return jiraFetch(`/issue/${issueKey}?fields=status,summary,labels`);
+}
+
+export async function searchIssues(jql) {
+  const data = await jiraFetch('/search/jql', {
+    method: 'POST',
+    body: JSON.stringify({
+      jql,
+      fields: ['status', 'summary', 'labels'],
+      maxResults: 50,
+    }),
+  });
+  return data.issues || [];
 }
 
 export async function getTransitions(issueKey) {

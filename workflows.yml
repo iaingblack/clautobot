@@ -1,0 +1,16 @@
+workflows:
+  create-evidence-file:
+    description: "Create an evidence file on the target server"
+    jira:
+      project: EV
+      label: clautobot-evidence
+      approvedStatus: "In Progress"
+    octopus:
+      space: Default
+      project: Evidence
+      runbook: Create Evidence File
+      environment: Production
+    params:
+      Keyword:
+        from: summary-regex
+        pattern: ":\\s*(.+)$"

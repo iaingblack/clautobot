@@ -1,44 +1,79 @@
 # Clautobot
 
-Automated change management: Claude creates Jira tickets, a background service monitors for approval and triggers Octopus Deploy runbooks.
+Automated change management: a background poller watches Jira for approved tickets and triggers Octopus Deploy runbooks.
 
 ## Architecture
 
-Two components work together:
+The **poller** (`npm run poller`) is the core. It runs unattended and handles the full lifecycle:
+1. Discovers new Jira tickets matching workflow configs
+2. Waits for approval (Jira status transition)
+3. Triggers the configured Octopus Deploy runbook
+4. Posts runbook output to the Jira ticket
+5. Closes the ticket on completion
 
-1. **Claude skill** (`/project:create-evidence-file <keyword>`) - Creates the Jira ticket and writes initial workflow state.
-2. **Background poller** (`npm run poller`) - Runs unattended. Polls Jira for approval, triggers Octopus runbook, closes ticket on completion.
+Workflow types are defined in `workflows.yml`. Adding a new type requires no code changes.
 
-Shared state lives in `state/` as JSON files. Both components read/write these.
+Optional: Claude skill and CLI script can also create tickets, but users can just create them directly in Jira with the right label.
 
 ## Project Structure
 
-- `src/jira.js` - Jira Cloud REST API client (create issues, check status, transition, comment)
-- `src/octopus.js` - Octopus Deploy REST API client (resolve IDs, trigger runbook, check task)
-- `src/state.js` - Workflow state management (read/write JSON files in `state/`)
+- `workflows.yml` - Workflow type definitions (Jira project, Octopus runbook, parameters)
 - `src/poller.js` - Background service entry point
-- `.claude/commands/create-evidence-file.md` - Claude skill that initiates workflows
-- `scripts/` - Utility scripts if needed
+- `src/config.js` - Loads and validates `workflows.yml`
+- `src/discovery.js` - Jira-driven ticket discovery (JQL scan per workflow type)
+- `src/params.js` - Parameter extraction from Jira tickets (labels, summary, custom fields)
+- `src/jira.js` - Jira Cloud REST API client
+- `src/octopus.js` - Octopus Deploy REST API client
+- `src/state.js` - Workflow state management (JSON files in `state/`)
+- `.claude/commands/create-evidence-file.md` - Optional Claude skill
+- `scripts/create-evidence-file.sh` - Optional CLI wrapper
 
 ## Configuration
 
-All config via `.env` file (see `.env.example` for template). Never commit secrets.
+Credentials in `.env` (see `.env.example`). Never commit secrets.
 
 Required environment variables:
 - `OCTOPUS_SERVER_URL` - Local Octopus Deploy server URL
 - `OCTOPUS_API_KEY` - Octopus API key with runbook execution permissions
-- `OCTOPUS_SPACE_NAME`, `OCTOPUS_PROJECT_NAME`, `OCTOPUS_RUNBOOK_NAME`, `OCTOPUS_ENVIRONMENT_NAME`
-- `JIRA_BASE_URL` - Jira Cloud instance URL (e.g., https://yoursite.atlassian.net)
+- `JIRA_BASE_URL` - Jira Cloud instance URL
 - `JIRA_EMAIL` - Jira account email for API auth
-- `JIRA_API_TOKEN` - Jira API token (not password)
-- `JIRA_PROJECT_KEY` - Jira project key for change tickets
-- `JIRA_APPROVED_STATUS` - Status name that means "approved" (e.g., "In Progress")
+- `JIRA_API_TOKEN` - Jira API token
+- `POLL_INTERVAL_SECONDS` - How often to poll (default: 300)
+
+Workflow-specific config (Jira project, Octopus space/project/runbook, parameters) lives in `workflows.yml`.
+
+## workflows.yml Format
+
+```yaml
+workflows:
+  workflow-name:
+    description: "What this workflow does"
+    jira:
+      project: PRO          # Jira project key
+      label: clautobot-xxx   # Label that identifies tickets for this workflow
+      approvedStatus: "In Progress"  # Status that means approved
+    octopus:
+      space: Default
+      project: MyProject
+      runbook: My Runbook
+      environment: Production
+    params:
+      ParamName:
+        from: label-prefix   # extraction strategy
+        prefix: "value:"     # strategy-specific config
+```
+
+### Parameter Extraction Strategies
+
+- `label-prefix` - Extract from a Jira label: label `keyword:myvalue` with prefix `keyword:` gives `myvalue`
+- `summary-regex` - Regex match on ticket summary: first capture group becomes the value
+- `custom-field` - Read from a Jira custom field by field ID
+- `fixed` - Hardcoded value
 
 ## Jira Workflow
 
-- Tickets are created with status "To Do"
-- Moving a ticket to the status defined by `JIRA_APPROVED_STATUS` = approved
-- The poller detects this and triggers the Octopus runbook
+- Tickets with the configured label and status "To Do" are discovered automatically
+- Moving a ticket to the workflow's `approvedStatus` triggers the runbook
 - On completion, the poller transitions the ticket to "Done"
 
 ## Workflow State
@@ -47,27 +82,19 @@ State files in `state/<TICKET-KEY>.json` track each workflow instance.
 
 Status progression: `awaiting_approval` -> `approved` -> `runbook_running` -> `runbook_complete` -> `done`
 
-## MCP Servers
+If a runbook fails: `runbook_failed` (delete the state file to retry)
 
-- **Atlassian** (plugin, already installed) - Used by the Claude skill to create Jira tickets
-- **Octopus Deploy** (configured in `.mcp.json`) - Used for browsing spaces/projects/environments. Runbook execution goes through REST API because the MCP server doesn't support runbooks.
+## Adding New Workflow Types
 
-## Adding New Task Types
-
-1. Create a new Claude skill in `.claude/commands/`
-2. Add a workflow type field to the state file
-3. Add a handler in `src/poller.js` for the new workflow type
-4. Create the corresponding Octopus runbook
+No code changes needed:
+1. Add a block to `workflows.yml`
+2. Create the Octopus Deploy runbook
+3. Restart the poller
 
 ## Running
 
 ```bash
-# Copy and fill in config
-cp .env.example .env
-
-# Start the background poller
-npm run poller
-
-# In Claude Code, initiate a workflow
-/project:create-evidence-file <keyword>
+cp .env.example .env    # Fill in credentials
+npm install
+npm run poller          # Start the background service
 ```

@@ -70,3 +70,12 @@ export async function getTaskStatus(taskId) {
     errorMessage: data.ErrorMessage,
   };
 }
+
+export async function getTaskLog(taskId) {
+  const url = `${SERVER_URL}/api/tasks/${taskId}/raw`;
+  const res = await fetch(url, { headers: { 'X-Octopus-ApiKey': API_KEY } });
+  if (!res.ok) {
+    throw new Error(`Octopus API ${res.status}: ${await res.text()}`);
+  }
+  return res.text();
+}

@@ -6,13 +6,15 @@ import { dirname } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_DIR = join(__dirname, '..', 'state');
 
-export async function createWorkflow(ticketKey, keyword, jiraUrl) {
+export async function createWorkflow(ticketKey, workflowType, params, jiraUrl) {
   const workflow = {
     ticketKey,
-    keyword,
+    workflowType,
     status: 'awaiting_approval',
+    params,
     jiraUrl,
     octopusTaskId: null,
+    runbookLog: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
