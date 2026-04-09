@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "octopus-deploy": {
+      "command": "npx",
+      "args": ["-y", "@octopusdeploy/mcp-server", "--no-read-only"],
+      "env": {
+        "OCTOPUS_API_KEY": "${OCTOPUS_API_KEY}",
+        "OCTOPUS_SERVER_URL": "${OCTOPUS_SERVER_URL}"
+      }
+    }
+  }
+}

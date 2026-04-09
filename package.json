@@ -1,0 +1,12 @@
+{
+  "name": "clautobot",
+  "version": "0.1.0",
+  "description": "Automated change management: Claude creates Jira tickets, a background service monitors for approval and triggers Octopus Deploy runbooks.",
+  "type": "module",
+  "scripts": {
+    "poller": "node src/poller.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}
