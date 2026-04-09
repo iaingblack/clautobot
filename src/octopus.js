@@ -48,10 +48,11 @@ export async function resolveIds(spaceName, projectName, runbookName, environmen
   };
 }
 
-export async function executeRunbook(spaceId, snapshotId, environmentId, formValues = {}) {
+export async function executeRunbook(spaceId, runbookId, snapshotId, environmentId, formValues = {}) {
   const data = await octoFetch(`/api/${spaceId}/runbookRuns`, {
     method: 'POST',
     body: JSON.stringify({
+      RunbookId: runbookId,
       RunbookSnapshotId: snapshotId,
       EnvironmentId: environmentId,
       FormValues: formValues,

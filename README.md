@@ -4,8 +4,8 @@ Automated change management workflow that connects Jira Cloud and Octopus Deploy
 
 ## How It Works
 
-1. You run `/project:create-evidence-file <keyword>` in Claude Code
-2. Claude creates a Jira ticket and saves workflow state
+1. You run `./scripts/create-evidence-file.sh <keyword>` from the command line
+2. Claude (via `claude -p`) creates a Jira ticket and saves workflow state
 3. A background poller service watches for ticket approval
 4. When the ticket is moved to the approved status, the poller triggers an Octopus Deploy runbook
 5. On completion, the poller closes the Jira ticket
@@ -45,8 +45,8 @@ Edit `.env` with your values:
 Create a runbook in your Octopus project that:
 - Has a prompted variable called `Keyword`
 - Runs a script step that creates a file using the keyword, e.g.:
-  ```bash
-  echo "#{Keyword}" > /evidence/#{Keyword}.txt
+  ```powershell
+  "#{Keyword}" | Out-File -FilePath "C:\evidence\#{Keyword}.txt"
   ```
 - Publish the runbook so it has a published snapshot
 
@@ -66,13 +66,11 @@ This runs continuously, checking for workflow state changes every 5 minutes. Kee
 
 ### Initiate a workflow
 
-In Claude Code (opened in this project directory):
-
-```
-/project:create-evidence-file my-keyword
+```bash
+./scripts/create-evidence-file.sh my-keyword
 ```
 
-This creates a Jira ticket and saves a state file. The poller handles everything from there.
+This runs Claude headlessly via `claude -p`, creates a Jira ticket, and saves a state file. The poller handles everything from there.
 
 ### Approve the change
 
@@ -99,6 +97,9 @@ src/
 
 .claude/commands/
 └── create-evidence-file.md   # Claude skill that initiates workflows
+
+scripts/
+└── create-evidence-file.sh   # CLI wrapper for headless execution via claude -p
 
 state/            # Runtime workflow state files (gitignored)
 ```

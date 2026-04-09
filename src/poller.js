@@ -3,7 +3,7 @@ import { getPendingWorkflows, updateWorkflow } from './state.js';
 import { getIssue, transitionIssue, addComment } from './jira.js';
 import { resolveIds, executeRunbook, getTaskStatus } from './octopus.js';
 
-const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const POLL_INTERVAL_MS = (process.env.POLL_INTERVAL_SECONDS || 300) * 1000;
 const APPROVED_STATUS = process.env.JIRA_APPROVED_STATUS || 'In Progress';
 
 let octopusIds = null;
@@ -40,6 +40,7 @@ async function processWorkflow(workflow) {
       const ids = await getOctopusIds();
       const { taskId } = await executeRunbook(
         ids.spaceId,
+        ids.runbookId,
         ids.publishedSnapshotId,
         ids.environmentId,
         { Keyword: keyword },
