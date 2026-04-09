@@ -22,7 +22,7 @@ async function jiraFetch(path, options = {}) {
   return res.status === 204 ? null : res.json();
 }
 
-export async function createIssue(projectKey, summary, description) {
+export async function createIssue(projectKey, summary, description, labels = []) {
   return jiraFetch('/issue', {
     method: 'POST',
     body: JSON.stringify({
@@ -38,6 +38,7 @@ export async function createIssue(projectKey, summary, description) {
           }],
         },
         issuetype: { name: 'Task' },
+        labels,
       },
     }),
   });
