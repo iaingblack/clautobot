@@ -35,15 +35,17 @@ export async function updateWorkflow(ticketKey, updates) {
 }
 
 export async function getPendingWorkflows() {
+  const all = await getAllWorkflows();
+  return all.filter(w => w.status !== 'done');
+}
+
+export async function getAllWorkflows() {
   const files = await readdir(STATE_DIR);
   const workflows = [];
   for (const file of files) {
     if (!file.endsWith('.json')) continue;
     const data = await readFile(join(STATE_DIR, file), 'utf-8');
-    const workflow = JSON.parse(data);
-    if (workflow.status !== 'done') {
-      workflows.push(workflow);
-    }
+    workflows.push(JSON.parse(data));
   }
-  return workflows;
+  return workflows.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
 }

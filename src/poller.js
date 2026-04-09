@@ -4,6 +4,7 @@ import { discoverTickets } from './discovery.js';
 import { getPendingWorkflows, updateWorkflow } from './state.js';
 import { getIssue, transitionIssue, addComment } from './jira.js';
 import { resolveIds, executeRunbook, getTaskStatus, getTaskLog } from './octopus.js';
+import { startWeb } from './web.js';
 
 const POLL_INTERVAL_MS = (process.env.POLL_INTERVAL_SECONDS || 300) * 1000;
 
@@ -101,7 +102,10 @@ async function processWorkflow(workflow, workflowConfig) {
   }
 }
 
-async function pollOnce(workflows) {
+async function pollOnce(workflows, pollerState) {
+  pollerState.lastPollAt = new Date().toISOString();
+  pollerState.pollCount++;
+
   // Phase 1: Discover new tickets from Jira
   for (const [name, config] of Object.entries(workflows)) {
     try {
@@ -147,8 +151,17 @@ if (missing.length > 0) {
 const workflows = loadWorkflows();
 const workflowNames = Object.keys(workflows);
 
+const pollerState = {
+  startedAt: new Date().toISOString(),
+  lastPollAt: null,
+  pollCount: 0,
+  workflowConfigs: workflowNames,
+};
+
 log('startup', `Clautobot poller started. Checking every ${POLL_INTERVAL_MS / 1000}s.`);
 log('startup', `Loaded ${workflowNames.length} workflow(s): ${workflowNames.join(', ')}`);
+
+startWeb(pollerState);
 
 // Graceful shutdown
 let running = true;
@@ -156,10 +169,10 @@ process.on('SIGINT', () => { running = false; log('shutdown', 'Received SIGINT')
 process.on('SIGTERM', () => { running = false; log('shutdown', 'Received SIGTERM'); });
 
 // Run immediately on start, then on interval
-await pollOnce(workflows);
+await pollOnce(workflows, pollerState);
 while (running) {
   await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
-  if (running) await pollOnce(workflows);
+  if (running) await pollOnce(workflows, pollerState);
 }
 
 log('shutdown', 'Poller stopped.');
