@@ -161,18 +161,38 @@ const pollerState = {
 log('startup', `Clautobot poller started. Checking every ${POLL_INTERVAL_MS / 1000}s.`);
 log('startup', `Loaded ${workflowNames.length} workflow(s): ${workflowNames.join(', ')}`);
 
-startWeb(pollerState, workflows);
+const webServer = startWeb(pollerState, workflows);
 
 // Graceful shutdown
 let running = true;
-process.on('SIGINT', () => { running = false; log('shutdown', 'Received SIGINT'); });
-process.on('SIGTERM', () => { running = false; log('shutdown', 'Received SIGTERM'); });
+let shuttingDown = false;
+let sleepTimer = null;
+let wakeSleep = null;
+
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  running = false;
+  log('shutdown', `Received ${signal}`);
+  if (sleepTimer) clearTimeout(sleepTimer);
+  if (wakeSleep) wakeSleep();
+  webServer.close(() => {
+    log('shutdown', 'Poller stopped.');
+    process.exit(0);
+  });
+  // Force-exit if close() hangs
+  setTimeout(() => process.exit(1), 5000).unref();
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 // Run immediately on start, then on interval
 await pollOnce(workflows, pollerState);
 while (running) {
-  await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+  await new Promise(resolve => {
+    wakeSleep = resolve;
+    sleepTimer = setTimeout(resolve, POLL_INTERVAL_MS);
+  });
   if (running) await pollOnce(workflows, pollerState);
 }
-
-log('shutdown', 'Poller stopped.');

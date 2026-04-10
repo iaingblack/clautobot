@@ -253,8 +253,10 @@ export function startWeb(pollerState, workflowConfigs) {
     }
   });
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     const ts = new Date().toISOString();
     console.log(`${ts} [web] Dashboard: http://localhost:${PORT}`);
   });
+
+  return server;
 }
