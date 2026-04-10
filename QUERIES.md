@@ -47,3 +47,50 @@ Future evolution paths:
 - **Jira webhooks** to replace polling with push notifications
 - **Configurable workflow templates** for more complex approval chains
 - **Consolidated JQL queries** if the number of workflow types grows large
+
+## Should the dashboard let users create tickets directly?
+
+Yes, short-term. The dashboard already knows all the workflow types and their parameter definitions from `workflows.yml`. A form per workflow type is straightforward — a POST endpoint that creates the Jira ticket and state file. This makes the dashboard the single interface for both monitoring and initiating workflows, so users don't need Jira bookmarks, CLI scripts, or knowledge of label conventions.
+
+Long-term, this is the wrong place for ticket creation. See the next question.
+
+## Should we use Jira Service Management (JSM) instead of building request forms?
+
+Yes, for anything beyond personal/internal use. JSM already provides a request portal, forms with validation, approval workflows, SLAs, queue management, customer notifications, and a compliance-grade audit trail. Rebuilding any of that in a custom dashboard is a distraction from clautobot's real job.
+
+The hybrid model is the right answer: **JSM is the frontend, clautobot is the audit and execution layer behind it.** JSM owns request creation, forms, approvals, customer comms. Clautobot owns polling JSM for approved requests, running runbooks, and giving the automation team operational visibility. Two audit trails with different audiences:
+
+- **JSM audit** = compliance record (request came in, was approved by X at time T)
+- **Clautobot audit** = automation record (poller picked up ticket at T1, started runbook at T2, runbook finished with exit code X at T3)
+
+The current clautobot architecture is already set up for this. The poller doesn't care how tickets get created, only that they have the right label and approval status. Switching from manual creation to JSM Forms would only require pointing the JQL at the JSM project and adjusting `discovery.js` to start at the approved state instead of "To Do".
+
+See `NEWPLATFORM.md` for the full plan.
+
+## What changes when this becomes a team tool at real scale?
+
+At 10 requests/day × 25 workflow types × new types added weekly:
+
+- **Volume is trivial** — that's not the problem
+- **Change velocity dominates** — new workflows weekly means config format and deployment flow matter more than throughput
+- **Shared state** — JSON files on one laptop don't work; SQLite with an `audit_log` table gives real audit queries
+- **Failure visibility** — failures need to appear in a dashboard, not an ssh session
+- **Dashboard scales** — pagination, search, filters by workflow type / product / date / requester. The simple "show all" table breaks at ~3,500 records/year
+- **Auth via reverse proxy** — never build auth into the app; use nginx/Caddy + oauth2-proxy against SSO. 30 minutes of setup vs weeks of writing auth code
+- **Config split by product** — one YAML file per workflow, grouped by product folder, instead of one giant file
+
+What you explicitly do NOT need at this scale: Kubernetes, message queues, event sourcing, Redis, GraphQL, a database server, rewriting in another language, microservices. Resist all of them.
+
+## Do we need two audit trails (JSM and clautobot)?
+
+Yes. They answer different questions and have different audiences:
+
+- **JSM audit** is for compliance, management, and the requester's manager. "Was this request legitimate? Was it approved by the right person?"
+- **Clautobot audit** is for the automation team. "What did the automation actually do? Did the runbook run once or twice? What was the output? Did the Jira comment that showed the result match what actually happened?"
+
+Important scenarios where they diverge:
+- Someone edits or deletes a clautobot-posted Jira comment — clautobot's log still shows what it actually did
+- A runbook ran but the Jira transition failed — JSM says "pending," clautobot's log shows the runbook succeeded
+- An auditor wants to know "what was automated" vs "what was manual" — you need the clautobot log to answer that
+
+Neither replaces the other; together they tell the full story.
