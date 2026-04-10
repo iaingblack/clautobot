@@ -161,7 +161,7 @@ const pollerState = {
 log('startup', `Clautobot poller started. Checking every ${POLL_INTERVAL_MS / 1000}s.`);
 log('startup', `Loaded ${workflowNames.length} workflow(s): ${workflowNames.join(', ')}`);
 
-startWeb(pollerState);
+startWeb(pollerState, workflows);
 
 // Graceful shutdown
 let running = true;

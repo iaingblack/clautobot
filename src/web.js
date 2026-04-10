@@ -1,7 +1,8 @@
 import express from 'express';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getAllWorkflows, getWorkflow } from './state.js';
+import { getAllWorkflows, getWorkflow, createWorkflow } from './state.js';
+import { createIssue, addComment } from './jira.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -51,10 +52,37 @@ function renderRow(wf) {
   </tr>`;
 }
 
-function renderDashboard(workflows, health) {
+function renderForms(workflowConfigs) {
+  const forms = Object.entries(workflowConfigs).map(([name, config]) => {
+    const paramFields = Object.entries(config.params || {}).map(([paramName]) => `
+      <div class="field">
+        <label for="${name}-${paramName}">${escapeHtml(paramName)}</label>
+        <input type="text" id="${name}-${paramName}" name="${escapeHtml(paramName)}" required>
+      </div>`).join('');
+
+    return `<form method="POST" action="/workflow" class="create-form">
+      <input type="hidden" name="workflowType" value="${escapeHtml(name)}">
+      <h3>${escapeHtml(name)}</h3>
+      <p class="form-description">${escapeHtml(config.description || '')}</p>
+      ${paramFields}
+      <button type="submit">Create</button>
+    </form>`;
+  }).join('');
+
+  return `<section class="forms">
+    <h2>Create Workflow</h2>
+    <div class="forms-grid">${forms}</div>
+  </section>`;
+}
+
+function renderDashboard(workflows, health, workflowConfigs, message) {
   const rows = workflows.length > 0
     ? workflows.map(renderRow).join('')
     : '<tr><td colspan="7" class="empty">No workflows found</td></tr>';
+
+  const messageBanner = message
+    ? `<div class="banner ${escapeHtml(message.type)}">${escapeHtml(message.text)}</div>`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -76,22 +104,27 @@ function renderDashboard(workflows, health) {
     </div>
   </header>
   <main>
-    <table>
-      <thead>
-        <tr>
-          <th>Ticket</th>
-          <th>Workflow</th>
-          <th>Status</th>
-          <th>Params</th>
-          <th>Created</th>
-          <th>Updated</th>
-          <th>Links</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows}
-      </tbody>
-    </table>
+    ${messageBanner}
+    ${renderForms(workflowConfigs)}
+    <section>
+      <h2>Workflows</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Ticket</th>
+            <th>Workflow</th>
+            <th>Status</th>
+            <th>Params</th>
+            <th>Created</th>
+            <th>Updated</th>
+            <th>Links</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </section>
   </main>
 </body>
 </html>`;
@@ -154,15 +187,45 @@ function renderDetail(wf) {
 </html>`;
 }
 
-export function startWeb(pollerState) {
+export function startWeb(pollerState, workflowConfigs) {
   const app = express();
   const PORT = process.env.WEB_PORT || 3000;
 
   app.use('/public', express.static(join(__dirname, '..', 'public')));
+  app.use(express.urlencoded({ extended: false }));
 
   app.get('/', async (req, res) => {
     const workflows = await getAllWorkflows();
-    res.send(renderDashboard(workflows, pollerState));
+    const message = req.query.created
+      ? { type: 'success', text: `Created ${req.query.created}` }
+      : req.query.error
+      ? { type: 'error', text: req.query.error }
+      : null;
+    res.send(renderDashboard(workflows, pollerState, workflowConfigs, message));
+  });
+
+  app.post('/workflow', async (req, res) => {
+    const { workflowType, ...params } = req.body;
+    const config = workflowConfigs[workflowType];
+    if (!config) {
+      return res.redirect(`/?error=${encodeURIComponent(`Unknown workflow: ${workflowType}`)}`);
+    }
+
+    try {
+      const paramValue = Object.values(params)[0];
+      const summary = `${config.description}: ${paramValue}`;
+      const description = `Automated change request from clautobot.\n\nWorkflow: ${workflowType}\nParameter: ${paramValue}\n\nOnce this ticket is moved to "${config.jira.approvedStatus}", the Octopus runbook "${config.octopus.runbook}" will execute automatically.`;
+
+      const issue = await createIssue(config.jira.project, summary, description, [config.jira.label]);
+      const jiraUrl = `${process.env.JIRA_BASE_URL}/browse/${issue.key}`;
+
+      await addComment(issue.key, `Created from clautobot dashboard. The background poller will proceed when this ticket is moved to "${config.jira.approvedStatus}".`);
+      await createWorkflow(issue.key, workflowType, params, jiraUrl);
+
+      res.redirect(`/?created=${encodeURIComponent(issue.key)}`);
+    } catch (err) {
+      res.redirect(`/?error=${encodeURIComponent(err.message)}`);
+    }
   });
 
   app.get('/workflow/:key', async (req, res) => {
