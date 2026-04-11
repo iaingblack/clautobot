@@ -2,6 +2,8 @@
 
 This document describes what clautobot becomes when it's deployed as a real internal tool for a team, rather than a prototype. It is the target architecture — the current repo is intentionally left as-is so it can be demoed. Nothing in this document is implemented yet.
 
+> **First implementation slice:** see [JSM-PLAN.md](JSM-PLAN.md) — a focused plan to wire up a single `Password Reset` JSM request type with a `System-A` / `System-B` dropdown routing to two Octopus runbooks. Touches only `workflows.yml`, [src/config.js](src/config.js), and [src/discovery.js](src/discovery.js). Deliberately skips SQLite, dashboard rewrite, and the `jsm-field` param strategy — those are later phases from this document.
+
 ## The Reframing
 
 The current prototype grew organically: it creates Jira tickets via Claude or a CLI script, polls Jira for approval, runs an Octopus runbook, and shows everything in a dashboard with forms for new requests. That's fine for a demo of "what if Claude orchestrated this," but it's wrong for an internal team tool at real scale.
