@@ -10,8 +10,13 @@ import { extractParams } from './params.js';
  * @returns {string[]} ticket keys that were newly discovered
  */
 export async function discoverTickets(workflowName, workflowConfig) {
-  const { project, label } = workflowConfig.jira;
-  const jql = `project = "${project}" AND labels = "${label}" AND status = "To Do"`;
+  const { project, label, approvedStatus, requestType, customFieldFilter } = workflowConfig.jira;
+  const clauses = [`project = "${project}"`];
+  if (label) clauses.push(`labels = "${label}"`);
+  if (requestType) clauses.push(`"Request Type" = "${requestType}"`);
+  if (customFieldFilter) clauses.push(`"${customFieldFilter.field}" = "${customFieldFilter.value}"`);
+  clauses.push(`status = "${approvedStatus}"`);
+  const jql = clauses.join(' AND ');
 
   const issues = await searchIssues(jql);
   const discovered = [];

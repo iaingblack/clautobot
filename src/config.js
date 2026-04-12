@@ -16,8 +16,13 @@ export function loadWorkflows() {
 
   const workflows = {};
   for (const [name, wf] of Object.entries(config.workflows)) {
-    if (!wf.jira?.project || !wf.jira?.label || !wf.jira?.approvedStatus) {
-      throw new Error(`Workflow "${name}": jira requires project, label, and approvedStatus`);
+    if (!wf.jira?.project || !wf.jira?.approvedStatus) {
+      throw new Error(`Workflow "${name}": jira requires project and approvedStatus`);
+    }
+    if (wf.jira.customFieldFilter) {
+      if (!wf.jira.customFieldFilter.field || !wf.jira.customFieldFilter.value) {
+        throw new Error(`Workflow "${name}": customFieldFilter requires both field and value`);
+      }
     }
     if (!wf.octopus?.space || !wf.octopus?.project || !wf.octopus?.runbook || !wf.octopus?.environment) {
       throw new Error(`Workflow "${name}": octopus requires space, project, runbook, and environment`);

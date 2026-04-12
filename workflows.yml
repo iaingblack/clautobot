@@ -14,3 +14,37 @@ workflows:
       Keyword:
         from: summary-regex
         pattern: ":\\s*(.+)$"
+
+  password-reset-system-a:
+    description: "Password reset for System-A via JSM"
+    jira:
+      project: <JSM_PROJECT_KEY>
+      label: clautobot-password-reset
+      approvedStatus: <APPROVED_STATUS_NAME>
+      requestType: "Password Reset"
+      customFieldFilter:
+        field: <SYSTEM_CUSTOM_FIELD_ID>
+        value: "System-A"
+    octopus:
+      space: <OCTOPUS_SPACE>
+      project: <OCTOPUS_PROJECT>
+      runbook: <RUNBOOK_A>
+      environment: <OCTOPUS_ENVIRONMENT>
+    params: {}
+
+  password-reset-system-b:
+    description: "Password reset for System-B via JSM"
+    jira:
+      project: <JSM_PROJECT_KEY>
+      label: clautobot-password-reset
+      approvedStatus: <APPROVED_STATUS_NAME>
+      requestType: "Password Reset"
+      customFieldFilter:
+        field: <SYSTEM_CUSTOM_FIELD_ID>
+        value: "System-B"
+    octopus:
+      space: <OCTOPUS_SPACE>
+      project: <OCTOPUS_PROJECT>
+      runbook: <RUNBOOK_B>
+      environment: <OCTOPUS_ENVIRONMENT>
+    params: {}
