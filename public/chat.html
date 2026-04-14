@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clautobot Chat</title>
+  <link rel="stylesheet" href="/public/style.css">
+  <link rel="stylesheet" href="/public/chat.css">
+</head>
+<body class="chat-body">
+  <header>
+    <h1>Clautobot</h1>
+    <div class="health">
+      <a href="/legacy" style="color:#9de3ff;margin-right:1rem;">Legacy dashboard</a>
+      No auth — any user can trigger workflows.
+    </div>
+  </header>
+  <div class="chat-layout">
+    <aside class="chat-sidebar">
+      <button id="new-chat" class="chat-new">+ New chat</button>
+      <div class="chat-hint">Try:
+        <ul>
+          <li>"create an evidence file with keyword foo"</li>
+          <li>"reset the admin password for payments in staging"</li>
+          <li>"restart the web frontend in production"</li>
+        </ul>
+      </div>
+      <ul id="session-list" class="session-list"></ul>
+    </aside>
+    <main class="chat-main">
+      <div id="empty-state" class="empty-state">
+        <p>Start a new chat or pick one from the sidebar.</p>
+      </div>
+      <div id="transcript" class="transcript" hidden></div>
+      <form id="chat-form" class="chat-form" hidden>
+        <textarea id="chat-input" placeholder="Ask Claude to run a workflow..." rows="3"></textarea>
+        <button type="submit" id="chat-send">Send</button>
+      </form>
+      <div id="chat-status" class="chat-status"></div>
+    </main>
+  </div>
+  <script src="/public/chat.js"></script>
+</body>
+</html>

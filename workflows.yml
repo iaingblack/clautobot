@@ -14,3 +14,47 @@ workflows:
       Keyword:
         from: summary-regex
         pattern: ":\\s*(.+)$"
+
+  # Added by the Claude chat spike. Skills under .claude/commands/reset-password.md
+  # and restart-service.md validate against Octopus before creating Jira tickets
+  # with these blocks. If the named Octopus project or runbook does not exist
+  # on the local server yet, Claude's validation step will fail cleanly and no
+  # ticket is created — which is the expected negative-test path.
+
+  reset-password-payments:
+    description: "Reset the admin password for the payments API"
+    jira:
+      project: EV
+      label: clautobot-reset-password
+      approvedStatus: "In Progress"
+    octopus:
+      space: Default
+      project: Payments
+      runbook: Reset Admin Password
+      environment: Staging
+    params:
+      Environment:
+        from: label-prefix
+        prefix: "env:"
+      Product:
+        from: label-prefix
+        prefix: "product:"
+
+  restart-service-web-frontend:
+    description: "Restart the web frontend service"
+    jira:
+      project: EV
+      label: clautobot-restart-service
+      approvedStatus: "In Progress"
+    octopus:
+      space: Default
+      project: WebFrontend
+      runbook: Restart Service
+      environment: Production
+    params:
+      Environment:
+        from: label-prefix
+        prefix: "env:"
+      Product:
+        from: label-prefix
+        prefix: "product:"
