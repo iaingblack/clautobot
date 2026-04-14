@@ -27,6 +27,8 @@ Optional: Claude skill and CLI script can also create tickets, but users can jus
 - `src/state.js` - Workflow state management (JSON files in `state/`)
 - `.claude/commands/create-evidence-file.md` - Optional Claude skill
 - `scripts/create-evidence-file.sh` - Optional CLI wrapper
+- `src/chat.js` + `src/claudeRunner.js` + `src/sessionStore.js` + `public/chat.*` - Claude chat spike (see below)
+- `.claude/commands/reset-password.md` + `.claude/commands/restart-service.md` - chat-driven skills that validate Octopus before creating Jira tickets
 
 ## Configuration
 
@@ -98,3 +100,9 @@ cp .env.example .env    # Fill in credentials
 npm install
 npm run poller          # Start the background service
 ```
+
+## Claude Chat Spike (parallel path)
+
+A conversational interface lives at `http://localhost:3000/chat` when the poller is running. It spawns `claude -p --resume` per message, streams stream-json events back as SSE, and persists session metadata to `state/chat-sessions.json`. Chat-driven skills (`.claude/commands/reset-password.md`, `.claude/commands/restart-service.md`) validate Octopus via MCP before creating Jira tickets; the existing poller then handles approval and runbook execution unchanged.
+
+This is a **throwaway spike**. It deliberately contradicts `NEWPLATFORM.md`, which is still the declared long-term direction (JSM as the user-facing frontend, clautobot as the audit/execution layer behind it). The spike exists to test whether a conversational interface is a useful alternative before revising the north star. No auth — any caller to `/chat` can trigger workflows.

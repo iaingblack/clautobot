@@ -3,6 +3,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getAllWorkflows, getWorkflow, createWorkflow } from './state.js';
 import { createIssue, addComment } from './jira.js';
+import { chatRouter } from './chat.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -97,6 +98,7 @@ function renderDashboard(workflows, health, workflowConfigs, message) {
   <header>
     <h1>Clautobot</h1>
     <div class="health">
+      <a href="/chat" style="color:#9de3ff;margin-right:1rem;">Chat (spike)</a>
       Last poll: ${timeAgo(health.lastPollAt)} &middot;
       Polls: ${health.pollCount} &middot;
       Uptime: ${timeAgo(health.startedAt)} &middot;
@@ -193,6 +195,7 @@ export function startWeb(pollerState, workflowConfigs) {
 
   app.use('/public', express.static(join(__dirname, '..', 'public')));
   app.use(express.urlencoded({ extended: false }));
+  app.use(chatRouter());
 
   app.get('/', async (req, res) => {
     const workflows = await getAllWorkflows();
