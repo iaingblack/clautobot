@@ -9,6 +9,7 @@
   flex: 1;
   display: grid;
   grid-template-columns: 260px 1fr;
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
 }
 
@@ -110,8 +111,10 @@
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  height: 100%;
   padding: 1rem 1.5rem;
   gap: 0.75rem;
+  overflow: hidden;
 }
 
 .empty-state {
@@ -153,6 +156,116 @@
   background: #fff;
   color: #222;
   border: 1px solid #e5e5e5;
+  white-space: normal;
+}
+
+/* Markdown inside assistant messages */
+.msg.assistant > *:first-child { margin-top: 0; }
+.msg.assistant > *:last-child  { margin-bottom: 0; }
+
+.msg.assistant p {
+  margin: 0.5rem 0;
+}
+
+.msg.assistant h1, .msg.assistant h2, .msg.assistant h3,
+.msg.assistant h4, .msg.assistant h5, .msg.assistant h6 {
+  margin: 0.8rem 0 0.4rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.msg.assistant h1 { font-size: 1.15rem; }
+.msg.assistant h2 { font-size: 1.05rem; }
+.msg.assistant h3 { font-size: 0.95rem; color: #1a1a2e; }
+.msg.assistant h4,
+.msg.assistant h5,
+.msg.assistant h6 { font-size: 0.9rem; color: #444; }
+
+.msg.assistant ul,
+.msg.assistant ol {
+  margin: 0.4rem 0;
+  padding-left: 1.25rem;
+}
+
+.msg.assistant li {
+  margin: 0.15rem 0;
+}
+
+.msg.assistant code {
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.8rem;
+}
+
+.msg.assistant pre {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 0.75rem 1rem;
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.msg.assistant pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.msg.assistant blockquote {
+  margin: 0.5rem 0;
+  padding: 0.25rem 0.75rem;
+  border-left: 3px solid #cbd5e1;
+  color: #475569;
+  font-style: italic;
+}
+
+.msg.assistant a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.msg.assistant table {
+  border-collapse: collapse;
+  margin: 0.6rem 0;
+  width: auto;
+  max-width: 100%;
+  font-size: 0.8rem;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  display: block;
+  overflow-x: auto;
+}
+
+.msg.assistant table thead {
+  background: #f1f5f9;
+}
+
+.msg.assistant table th,
+.msg.assistant table td {
+  border: 1px solid #e2e8f0;
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+  font-size: 0.8rem;
+  text-transform: none;
+  color: #222;
+  font-weight: 400;
+}
+
+.msg.assistant table th {
+  font-weight: 600;
+  color: #475569;
+}
+
+.msg.assistant strong {
+  color: #111;
+  font-weight: 600;
 }
 
 .msg.tool {
@@ -175,6 +288,32 @@
   color: #991b1b;
   border: 1px solid #fca5a5;
   font-size: 0.8rem;
+}
+
+.msg.system {
+  align-self: center;
+  flex-shrink: 0;
+  background: #eef2f7;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+  font-size: 0.75rem;
+  font-family: "SF Mono", "Fira Code", monospace;
+  line-height: 1.5;
+  max-width: 90%;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.msg.system a {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.msg.system a:hover {
+  color: #1e3a8a;
 }
 
 .chat-form {

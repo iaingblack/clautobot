@@ -7,8 +7,12 @@ import {
   createSession,
   recordTurn,
   deleteSession,
+  setTicketKey,
 } from './sessionStore.js';
 import { runTurn, loadHistory } from './claudeRunner.js';
+import { bus } from './events.js';
+
+const TICKET_KEY_RE = /\/browse\/([A-Z][A-Z0-9_]*-\d+)/;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
@@ -84,11 +88,29 @@ export function chatRouter() {
       await recordTurn(sessionId, message);
 
       const turn = runTurn({ sessionId, message, isFirstTurn });
+      let detectedTicket = session.ticketKey || null;
 
-      turn.on('text', data => send('text', data));
+      const maybeAttachTicket = async text => {
+        if (detectedTicket) return;
+        const m = text && text.match(TICKET_KEY_RE);
+        if (!m) return;
+        detectedTicket = m[1];
+        try {
+          await setTicketKey(sessionId, detectedTicket);
+          send('ticket_attached', { ticketKey: detectedTicket });
+        } catch {}
+      };
+
+      turn.on('text', data => {
+        send('text', data);
+        maybeAttachTicket(data.text);
+      });
       turn.on('thinking', data => send('thinking', data));
       turn.on('tool_use', data => send('tool_use', data));
-      turn.on('tool_result', data => send('tool_result', data));
+      turn.on('tool_result', data => {
+        send('tool_result', data);
+        maybeAttachTicket(data.content);
+      });
       turn.on('system', data => {
         if (data.subtype === 'init') send('system', { subtype: 'init' });
       });
@@ -107,6 +129,57 @@ export function chatRouter() {
       send('end', { code: 1 });
       res.end();
     }
+  });
+
+  router.get('/api/chat/sessions/:id/events', async (req, res) => {
+    const sessionId = req.params.id;
+    const session = await getSession(sessionId);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+    res.flushHeaders?.();
+    res.write(': connected\n\n');
+
+    const send = (event, data) => {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    const onUpdate = async evt => {
+      // Re-read session each time so a ticket attached mid-stream is picked up.
+      const current = await getSession(sessionId);
+      if (!current?.ticketKey || current.ticketKey !== evt.ticketKey) return;
+      const taskId = evt.workflow?.octopusTaskId;
+      const octopusBase = process.env.OCTOPUS_SERVER_URL;
+      const octopusTaskUrl = taskId && octopusBase
+        ? `${octopusBase.replace(/\/$/, '')}/app#/tasks/${taskId}`
+        : null;
+      send('workflow-update', {
+        ticketKey: evt.ticketKey,
+        status: evt.status,
+        workflowType: evt.workflow?.workflowType,
+        octopusTaskId: taskId,
+        octopusTaskUrl,
+        jiraUrl: evt.workflow?.jiraUrl,
+        updatedAt: evt.workflow?.updatedAt,
+      });
+    };
+
+    bus.on('workflow-update', onUpdate);
+
+    const heartbeat = setInterval(() => {
+      try { res.write(': ping\n\n'); } catch {}
+    }, 25000);
+
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      bus.off('workflow-update', onUpdate);
+    });
   });
 
   return router;
