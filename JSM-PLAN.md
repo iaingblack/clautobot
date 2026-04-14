@@ -43,19 +43,36 @@ Decision locked: reusing an existing JSM project. Capture its **project key** (v
 
 ### 1.3 Add the System dropdown
 
-JSM needs a custom field for the System selection. Create it once at the Jira level, then add it to the request type:
+JSM needs a custom field for the System selection. Create it at the Jira admin level, then add it to the Password Reset request type's form.
 
-- Jira settings (cog) → **Issues** → **Custom fields** → **Create custom field**
-- Field type: **Select List (single choice)**
-- Name: `System`
-- Add two options: `System-A` and `System-B`
-- Screens: add to the default screen for the JSM project's `Service Request` issue type
-- Capture the field ID — after saving, the field's edit URL contains `customFieldId=10XXX`. We'll reference it as `customfield_10XXX` in the poller. Alternatively: `GET /rest/api/3/field` and grep for `"System"`.
+**Create the field (Jira admin):**
 
-Back in the request type editor:
+- Settings (cog) → **Work items** → **Custom fields** → **Create custom field**
+- Pick **All** tab, choose **Select List (single choice)** → **Next**
+- Name: `System`, add a description if you like → **Create**
+- You will be dropped onto the **Associate field to screens** step — tick the screen(s) used by the JSM project's `Service Request` work type (typically `<PROJECT> Jira Service Management Screen`) → **Update**
 
-- Open `Password Reset` → **Request form** / **Work item view** → add field → pick `System` → mark **Required**
-- Save
+**Add the two options:**
+
+- Back on **Custom fields**, find `System` and open its **Contexts and default value** config
+- Add the options `System-A` and `System-B` to the default context → save
+
+**Capture the field ID:**
+
+The most reliable route is a REST call — the admin UI's URL format has shifted across recent Jira releases, so don't rely on `customFieldId=` in the URL bar:
+
+```bash
+curl -u "$JIRA_EMAIL:$JIRA_API_TOKEN" "$JIRA_BASE_URL/rest/api/3/field" | jq '.[] | select(.name=="System") | .id'
+```
+
+Expect `"customfield_10XXX"`. Use that exact string for `<SYSTEM_CUSTOM_FIELD_ID>` in `workflows.yml`.
+
+**Add the field to the Password Reset request type:**
+
+- From the JSM service space → **Space settings** → **Request management** → **Request types** → **Password Reset**
+- Open **Request form** → drag the `System` field in from the fields panel on the right
+- Tick **Required**
+- **Save changes**
 
 ### 1.4 Workflow / approved status
 
