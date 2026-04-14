@@ -96,9 +96,9 @@ function renderDashboard(workflows, health, workflowConfigs, message) {
 </head>
 <body>
   <header>
-    <h1>Clautobot</h1>
+    <h1>Clautobot &rsaquo; Legacy dashboard</h1>
     <div class="health">
-      <a href="/chat" style="color:#9de3ff;margin-right:1rem;">Chat (spike)</a>
+      <a href="/" style="color:#9de3ff;margin-right:1rem;">Back to chat</a>
       Last poll: ${timeAgo(health.lastPollAt)} &middot;
       Polls: ${health.pollCount} &middot;
       Uptime: ${timeAgo(health.startedAt)} &middot;
@@ -147,7 +147,7 @@ function renderDetail(wf) {
 </head>
 <body>
   <header>
-    <h1><a href="/">Clautobot</a> &rsaquo; ${escapeHtml(wf.ticketKey)}</h1>
+    <h1><a href="/legacy">Clautobot</a> &rsaquo; ${escapeHtml(wf.ticketKey)}</h1>
   </header>
   <main class="detail">
     <section class="info">
@@ -197,7 +197,7 @@ export function startWeb(pollerState, workflowConfigs) {
   app.use(express.urlencoded({ extended: false }));
   app.use(chatRouter());
 
-  app.get('/', async (req, res) => {
+  app.get('/legacy', async (req, res) => {
     const workflows = await getAllWorkflows();
     const message = req.query.created
       ? { type: 'success', text: `Created ${req.query.created}` }
@@ -225,9 +225,9 @@ export function startWeb(pollerState, workflowConfigs) {
       await addComment(issue.key, `Created from clautobot dashboard. The background poller will proceed when this ticket is moved to "${config.jira.approvedStatus}".`);
       await createWorkflow(issue.key, workflowType, params, jiraUrl);
 
-      res.redirect(`/?created=${encodeURIComponent(issue.key)}`);
+      res.redirect(`/legacy?created=${encodeURIComponent(issue.key)}`);
     } catch (err) {
-      res.redirect(`/?error=${encodeURIComponent(err.message)}`);
+      res.redirect(`/legacy?error=${encodeURIComponent(err.message)}`);
     }
   });
 

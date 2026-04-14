@@ -101,8 +101,12 @@ npm install
 npm run poller          # Start the background service
 ```
 
-## Claude Chat Spike (parallel path)
+## Primary UI: Claude chat
 
-A conversational interface lives at `http://localhost:3000/chat` when the poller is running. It spawns `claude -p --resume` per message, streams stream-json events back as SSE, and persists session metadata to `state/chat-sessions.json`. Chat-driven skills (`.claude/commands/reset-password.md`, `.claude/commands/restart-service.md`) validate Octopus via MCP before creating Jira tickets; the existing poller then handles approval and runbook execution unchanged. An in-process event bus (`src/events.js`) fires from `state.updateWorkflow` on every state transition, and the chat UI subscribes via `GET /api/chat/sessions/:id/events` (SSE) so poller progress shows up live as system pills in the transcript. Claude is pinned into the change-management role via `--system-prompt` in `src/claudeRunner.js`, and assistant replies render as markdown in the UI (safe DOM only, no innerHTML).
+`http://localhost:3000/` serves the conversational interface. It spawns `claude -p --resume` per message, streams stream-json events back as SSE, and persists session metadata to `state/chat-sessions.json`. Chat-driven skills (`.claude/commands/reset-password.md`, `.claude/commands/restart-service.md`, `.claude/commands/create-evidence-file.md`) validate Octopus via MCP before creating Jira tickets; the poller then handles approval and runbook execution unchanged. An in-process event bus (`src/events.js`) fires from `state.updateWorkflow` on every state transition, and the chat UI subscribes via `GET /api/chat/sessions/:id/events` (SSE) so poller progress shows up live as clickable system pills in the transcript (links to the Jira ticket and Octopus task). Claude is pinned into the change-management role via `--system-prompt` in `src/claudeRunner.js`, and assistant replies render as markdown in the UI (safe DOM only, no innerHTML).
 
-This is a **throwaway spike**. It deliberately contradicts `NEWPLATFORM.md`, which is still the declared long-term direction (JSM as the user-facing frontend, clautobot as the audit/execution layer behind it). The spike exists to test whether a conversational interface is a useful alternative before revising the north star. No auth — any caller to `/chat` can trigger workflows.
+This is still a **throwaway spike** relative to `NEWPLATFORM.md`, which remains the declared long-term direction (JSM as the user-facing frontend, clautobot as the audit/execution layer behind it). The spike exists to test whether a conversational interface is a useful alternative before revising the north star. No auth — any caller to `/` can trigger workflows.
+
+## Legacy dashboard
+
+The original read-only dashboard + creation forms live at `http://localhost:3000/legacy`. Useful for operational visibility of workflow state files, and for creating tickets via plain HTML forms when you want to bypass Claude. The creation forms POST to `/workflow` and the detail view stays at `/workflow/:key`.

@@ -21,7 +21,7 @@ export function chatRouter() {
   const router = express.Router();
   router.use(express.json());
 
-  router.get('/chat', (_req, res) => {
+  router.get(['/', '/chat'], (_req, res) => {
     res.sendFile(join(PUBLIC_DIR, 'chat.html'));
   });
 
